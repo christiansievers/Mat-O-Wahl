@@ -3,27 +3,29 @@
 // License: GPL 3
 // Mathias Steudtner http://www.medienvilla.com
 
-var arExplanations = new Array(); // Globales Array für die Frage-Erklärungen
+var arCategoryExplanations = new Array(); // Globales Array für Kriterien-Erklärungen
+var arExplanations = new Array();         // Globales Array für Frage-Erklärungen
 
-// Überschreibt den CSV-Parser, um die neue Spalte an Index 2 auszulesen
 function fnTransformCsvToArray(csvData) {
 	var lines = $.csv.toArrays(csvData, {separator: ';'});
 	arCategories = [];
+	arCategoryExplanations = [];
 	arQuestionsLong = [];
 	arExplanations = [];
 	arAnswers = [];
 	
 	for (var i = 1; i < lines.length; i++) {
 		var row = lines[i];
-		if (row.length < 2 || row[0].trim() === "") continue;
+		if (row.length < 4 || row[0].trim() === "") continue;
 		
 		arCategories.push(row[0]);
-		arQuestionsLong.push(row[1]);
-		arExplanations.push(row[2] ? row[2].trim() : "");
+		arCategoryExplanations.push(row[1] ? row[1].trim() : ""); // Index 1: Kriterium-Erklärung
+		arQuestionsLong.push(row[2]);                             // Index 2: Eigentliche Frage
+		arExplanations.push(row[3] ? row[3].trim() : "");         // Index 3: Frage-Erklärung
 		
 		var currentAnswers = [];
-		// Antworten starten jetzt bei Index 3 (wegen der Erklärung auf Index 2)
-		for (var j = 3; j < row.length; j += 2) {
+		// Antworten starten durch die neue Spalte jetzt bei Index 4
+		for (var j = 4; j < row.length; j += 2) {
 			if (row[j] && row[j].trim() !== "") {
 				currentAnswers.push({
 					text: row[j],
@@ -41,18 +43,16 @@ function fnStart() {
 	$("#sectionVotingButtons").hide();
 	$("#sectionResults").hide();
 	
-	// Lade deine CSV-Datei mit den Fragen
-	fnReadCsv("data/fragen_judge_fileformat-06-samplelines.csv", function(csvData) {
+	fnReadCsv("data/fragen_judge_fileformat.csv", function(csvData) {
         fnTransformCsvToArray(csvData);
         $("#descriptionExplanation").empty().append("");
     });
 }
 
 function fnHideWelcomeMessage() { 
-	// Auslesen und Speichern des eingegebenen Formats
 	selectedFormatName = $("#formatNote").val().trim();
 	if (selectedFormatName === "") {
-		selectedFormatName = "unbenanntes Format"; // Fallback, falls nichts eingegeben wurde
+		selectedFormatName = "unbenanntes Format";
 	}
 	
 	$('#sectionDescription').hide().empty();
@@ -66,18 +66,25 @@ function fnShowQuestionNumber(questionNumber) {
 		activeQuestion = questionNumber; 
 		
 		$("#sectionShowQuestions").fadeOut(300).hide();		
-        $("#showQuestionsHeader").empty().append("<h2>Kategorie: " + arCategories[questionNumber] + "</h2>");
+        
+		// 1. KRITERIUM-HEADER & KRITERIUMS-ERKLÄRUNG BEREITSTELLEN
+        $("#showQuestionsHeader").empty().append("<h2>Kriterium: " + arCategories[questionNumber] + "</h2>");
+		if (arCategoryExplanations[questionNumber] && arCategoryExplanations[questionNumber] !== "") {
+			// Ersetzt eventuelle Zeilenumbrüche aus der CSV (\n) in echte HTML-Breaks (<br>)
+			let formattedCatExpl = arCategoryExplanations[questionNumber].replace(/\n/g, "<br>");
+			$("#showQuestionsHeader").append("<p class='text-muted small font-weight-normal mb-0 mt-1'>" + formattedCatExpl + "</p>");
+		}
+
+		// 2. FRAGE & FRAGE-ERKLÄRUNG BEREITSTELLEN
         $("#showQuestionsQuestion").empty().append(arQuestionsLong[questionNumber]);			
-		
-		// ERKLÄRUNG ANZEIGEN ODER AUSBLENDEN
 		if (arExplanations[questionNumber] && arExplanations[questionNumber] !== "") {
-			$("#showQuestionsExplanation").empty().append(arExplanations[questionNumber]).show();
+			let formattedExpl = arExplanations[questionNumber].replace(/\n/g, "<br>");
+			$("#showQuestionsExplanation").empty().append(formattedExpl).show();
 		} else {
 			$("#showQuestionsExplanation").empty().hide();
 		}
 
 		$("#sectionShowQuestions").fadeIn(300);
-
 		$("#sectionVotingButtons").fadeOut(300).hide();
         
         // Dynamische Buttons für diese Frage generieren
@@ -102,23 +109,19 @@ function fnShowQuestionNumber(questionNumber) {
 		$("#sectionVotingButtons").fadeIn(300);
 
 	} else {
-		// Auswertung
 		let resultsObj = fnEvaluation();
 		fnEvaluationCategories(resultsObj);
 	} 
 }
 
 function fnEvaluationCategories(resultsObj) {
-	// WICHTIG: Vorherige Inhalte leeren, damit bei einer Änderung nichts doppelt angehängt wird
 	$("#resultsShort").empty();
 	$("#resultsDetailed").empty();
 
-	// Nutzt den dynamischen Namen in der Überschrift
 	$("#resultsHeading").empty().append("<h1>Auswertung zu: " + selectedFormatName + "</h1>").fadeIn(500);
 
 	var tableContent = "<div class='row' role='table'><div class='col'>";
 
-    // 1. KATEGORIEN-BALKEN GENERIEREN
     for (const cat in resultsObj.max) {
         let maxPoints = resultsObj.max[cat];
         let achievedPoints = resultsObj.scores[cat];
@@ -129,7 +132,7 @@ function fnEvaluationCategories(resultsObj) {
         tableContent += "<div class='row'>";
         
         tableContent += "<div class='col col-12 col-md-4' role='cell'>";
-        tableContent += "<strong>Kategorie: " + cat + "</strong>";
+        tableContent += "<strong>Kriterium: " + cat + "</strong>";
         tableContent += "</div>";
 
         tableContent += "<div class='col col-12 col-md-8' role='cell'>";
@@ -144,11 +147,10 @@ function fnEvaluationCategories(resultsObj) {
 	tableContent += "</div></div>";
 	$("#resultsShort").append(tableContent);
 
-	// 2. DETAIL-ÜBERSICHT MIT INTERAKTIVEN DROPDOWNS GENERIEREN
 	var detailedContent = "<h2>Detaillierte Antwortübersicht (nachträgliche Änderung möglich)</h2>";
 	detailedContent += "<div class='table-responsive mt-3'>";
 	detailedContent += "<table class='table table-bordered table-striped'>";
-	detailedContent += "<thead class='thead-dark'><tr><th style='width: 15%;'>Kategorie</th><th style='width: 45%;'>Frage</th><th style='width: 30%;'>Deine Antwort</th><th style='width: 10%;'>Punkte</th></tr></thead>";
+	detailedContent += "<thead class='thead-dark'><tr><th style='width: 15%;'>Kriterium</th><th style='width: 45%;'>Frage</th><th style='width: 30%;'>Deine Antwort</th><th style='width: 10%;'>Punkte</th></tr></thead>";
 	detailedContent += "<tbody id='detailedTableBody'></tbody></table></div>";
 
 	$("#resultsDetailed").append(detailedContent);

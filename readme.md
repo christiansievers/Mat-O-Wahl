@@ -1,5 +1,9 @@
 # File-O-Mat
+Dieses Skript stellt eine Reihe von Fragen, die dabei helfen, Dateiformate auf ihre Eignung zur Langzeitverfügbarkeit zu evaluieren.
 
+Der Fragenkatalog und die Gewichtungen sind aus einem bash-Skript der [SLUB Dresden ](https://git.slub-dresden.de/digital-preservation/judge_fileformats)übernommen. 
+
+Die Web-Applikation basiert auf Mat-O-Wahl von Mathias Steudtner  ([Webseite](https://www.mat-o-wahl.de/) / [GitHub](https://github.com/msteudtn/Mat-O-Wahl))
 
 
 - - - 
