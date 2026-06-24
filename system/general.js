@@ -13,6 +13,8 @@ var arPersonalPositions = []; // Speichert das gewählte Antwort-Objekt {text, w
 var activeQuestion = 0; 
 var totalQuestions = 0;
 
+var selectedFormatName = ""; 
+
 function fnReadCsv(csvFile, fnCallback) {
  $.ajax({ 
 	type: "GET", 
@@ -63,7 +65,7 @@ function fnEvaluation() {
 	var categoryScores = {};
 	var categoryMax = {};
 
-	// Berechnung der maximal erreichbaren Punkte und der erreichten Punkte pro Kategorie
+	// Berechnung der maximal erreichbaren Punkte und der erreichten Punkte pro Kriterium
 	for (let i = 0; i < totalQuestions; i++) {
 		let cat = arCategories[i];
 		
